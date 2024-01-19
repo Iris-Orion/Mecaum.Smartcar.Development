@@ -51,6 +51,7 @@ DMA_HandleTypeDef hdma_adc1;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart1;
@@ -89,7 +90,11 @@ struct JoytickAdcValue{
 };
 
 //__IO uint32_t PWM_OUT ENABLE;
-uint16_t PWM_OUT = 1;
+uint16_t DCMotor_PWM_OUT = 1;
+
+//振动马达PWM输出flag
+uint16_t Vibration_Motor_PWM_OUT = 1;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -101,6 +106,7 @@ static void MX_TIM6_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 static void Wheel_Rotate_Direction(WheelDirection LeftFrontDirection,
 									WheelDirection RightFrontDirection,
@@ -148,6 +154,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_ADC1_Init();
   MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
   // 定义缓冲区，设置数据接收长度，开启串口中断接收
@@ -156,6 +163,7 @@ int main(void)
   // 测试发送
   HAL_UART_Transmit(&huart1, CommInitMessage, sizeof(CommInitMessage), 1000);
 
+  // 设置pwm的频率为10khz， pwm的频率范围一般要为1khz - 20khz
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
@@ -164,6 +172,12 @@ int main(void)
 
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+
+  HAL_TIM_Base_Start_IT(&htim4);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
+
 
   HAL_TIM_Base_Start_IT(&htim6);
 
@@ -375,9 +389,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 99;
+  htim2.Init.Prescaler = 41;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 839;
+  htim2.Init.Period = 999;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -400,7 +414,7 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 400;
+  sConfigOC.Pulse = 500;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -445,9 +459,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 88;
+  htim3.Init.Prescaler = 83;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 839;
+  htim3.Init.Period = 999;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
@@ -461,10 +475,14 @@ static void MX_TIM3_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 420;
+  sConfigOC.Pulse = 750;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -472,6 +490,55 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
+
+}
+
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 83;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 999;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 750;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
 
 }
 
@@ -670,9 +737,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 		HAL_GPIO_TogglePin(Board_LED_GPIO_Port, Board_LED_Pin);
 
-		if(PWM_OUT == 1)
+		if(DCMotor_PWM_OUT == 1)
 		{
-			PWM_OUT = 0;
+			DCMotor_PWM_OUT = 0;
 
 			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
 			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
@@ -681,11 +748,28 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		}
 		else
 		{
-			PWM_OUT = 1;
+			DCMotor_PWM_OUT = 1;
 			HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 			HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
 			HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
 			HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
+		}
+
+		if (Vibration_Motor_PWM_OUT == 1)
+		{
+			Vibration_Motor_PWM_OUT = 0;
+			HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_1);
+			HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_2);
+
+			HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+		}
+		else
+		{
+			Vibration_Motor_PWM_OUT = 1;
+			HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+			HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+
+			HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
 		}
 	}
 }
